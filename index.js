@@ -6,16 +6,20 @@ const sourceURL =
 (async () => {
 	const browser = await puppeteer.launch({ headless: 'new' });
 	const page = await browser.newPage();
-	const allEpisodeLinks = [];
+	const allEpisodesWithGuest = [];
 
-	async function getAllEpisodeLinks() {
+	async function main() {
 		await page.goto(sourceURL);
 
 		// go to the last page
+		// can't use page.click() because the pagination anchors don't have hrefs
 		let pageNum = await page.$eval('a.last', (a) => a.dataset.page);
-		await page.goto(`${sourceURL}?_paged=${pageNum}`);
 
 		while (pageNum) {
+			console.log(`Checking page ${pageNum}...`);
+
+			await page.goto(`${sourceURL}?_paged=${pageNum}`);
+
 			const episodeLinks = await page.$$eval(
 				'.latest-panel-loop-item-title a',
 				(links) =>
@@ -24,15 +28,37 @@ const sourceURL =
 						.filter((link) => !link.includes('boco'))
 			);
 
-			allEpisodeLinks.push(...episodeLinks);
+			const episodesWithGuest = await getEpisodesWithGuest(episodeLinks);
+			allEpisodesWithGuest.push(...episodesWithGuest);
 			pageNum--;
 		}
+
+		console.log({ allEpisodesWithGuest });
 	}
 
-	await getAllEpisodeLinks();
-	console.log({ allEpisodeLinks });
+	async function getEpisodesWithGuest(episodeLinks, guest = 'Jason Pargin') {
+		const episodesWithGuest = [];
 
-	// TODO check for Jason Pargin
+		for (const link of episodeLinks) {
+			await page.goto(link);
 
+			try {
+				const guestText = await page.$eval(
+					'#single-episode-guests',
+					(el) => el.textContent
+				);
+
+				if (guestText.includes(guest)) {
+					episodesWithGuest.push(link);
+				}
+			} catch (error) {
+				// continue if no matching element was found
+			}
+		}
+
+		return episodesWithGuest;
+	}
+
+	await main();
 	await browser.close();
 })();

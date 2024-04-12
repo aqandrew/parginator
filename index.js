@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer';
 
 const sourceURL =
 	'https://maximumfun.org/podcasts/secretly-incredibly-fascinating/';
+const guest = 'Jason Pargin';
 
 (async () => {
 	const browser = await puppeteer.launch({ headless: 'new' });
@@ -16,6 +17,7 @@ const sourceURL =
 		let pageNum = await page.$eval('a.last', (a) => a.dataset.page);
 
 		while (pageNum) {
+			// TODO add ora spinner
 			console.log(`Checking page ${pageNum}...`);
 
 			await page.goto(`${sourceURL}?_paged=${pageNum}`);
@@ -33,10 +35,11 @@ const sourceURL =
 			pageNum--;
 		}
 
+		// TODO write this to a text file
 		console.log({ allEpisodesWithGuest });
 	}
 
-	async function getEpisodesWithGuest(episodeLinks, guest = 'Jason Pargin') {
+	async function getEpisodesWithGuest(episodeLinks) {
 		const episodesWithGuest = [];
 
 		for (const link of episodeLinks) {
